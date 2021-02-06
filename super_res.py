@@ -132,7 +132,7 @@ def main():
 
       img_dataset = []
       for f in os.listdir(args.folder):
-            filename = os.path.join(args.folder,f)
+            filename = os.path.join(args.folder, f)
             img = Image.open(filename)
             img_dataset.append(img)
       dataset = ImageFitting_set(img_dataset)
