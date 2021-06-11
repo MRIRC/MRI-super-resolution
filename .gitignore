@@ -2,3 +2,4 @@ gifs/
 *.mat
 .ipynb_checkpoints
 __pycache__/
+*.csv
