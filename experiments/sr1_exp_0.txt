@@ -1,0 +1,8 @@
+style = directional
+steps = 3000
+focus = gland
+weight = False
+depth = 2
+hidden = 128
+input = 2
+output = dwi

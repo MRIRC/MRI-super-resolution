@@ -1,5 +1,2 @@
-gifs/
-*.mat
-.ipynb_checkpoints
-__pycache__/
-*.csv
+*checkpoint.ipynb
+*.pyc

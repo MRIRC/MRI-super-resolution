@@ -14,6 +14,17 @@ from PIL import Image#, ImageSequence
 import matplotlib#; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+import SimpleITK as sitk
+
+def save_dicom(img, filename):
+    expanded = np.expand_dims(img, 0).astype('int16')
+    filtered_image = sitk.GetImageFromArray(expanded)
+    writer = sitk.ImageFileWriter()
+    for i in range(filtered_image.GetDepth()):
+        image_slice = filtered_image[:,:,i]
+        writer.SetFileName(filename)
+        writer.Execute(image_slice)
+
 class case:
       def __init__(self, pt_id, cancer_loc, collateral_loc, cancer_slice, acquisitions):
             '''
@@ -38,6 +49,28 @@ cases.append(case('17-1694-55', (63, 56), (63, 67), 13, (4, 4, 4)))
 cases.append(case('18-1681-07', (67, 71), (67, 59), 11, (8, 8, 8)))
 cases.append(case('18-1681-08', (79, 71), (79, 59), 10, (8, 7, 8)))
 cases.append(case('18-1681-09', (60, 66), (60, 57), 15, (8, 8, 8)))
+
+def calculate_contrast(case, scale, image, focus):
+    """ calculates the contrast between the cancer and the collateral benign tissue"""
+    # cancer center x,y locations
+    cc_x, cc_y = tuple((i -focus)*scale for i in case.cancer_loc)
+    # collateral benign x,y locations
+    cb_x, cb_y = tuple((i -focus)*scale for i in case.collateral_loc)
+    cancer_area = image[cc_x - scale : cc_x + scale, cc_y - scale : cc_y + scale]
+    collateral_area = image[cb_x - scale : cb_x + scale, cb_y - scale : cb_y + scale]
+    
+    #cancer_mean
+    cm = cancer_area.mean()
+    #begign_mean
+    bm = collateral_area.mean()
+    #cancer_variance
+    varc = np.std(cancer_area)**2
+    #benign variance
+    varb = np.std(collateral_area)**2
+    
+    C = (cancer_area.mean() - collateral_area.mean())/cancer_area.mean()
+    CNR = (cancer_area.mean() - collateral_area.mean())/np.sqrt(varc + varb)
+    return C, CNR
 
 def get_mgrid(sidelen, dim=2):
     '''Generates a flattened grid of (x,y,...) coordinates in a range of -1 to 1.
@@ -75,61 +108,54 @@ class SineLayer(nn.Module):
 
 
 class Siren(nn.Module):
-      def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False,
-                   first_omega_0=30., hidden_omega_0=30.):
-            super().__init__()
-            self.net = []
-            self.net.append(SineLayer(in_features, hidden_features, is_first=True, omega_0=first_omega_0))
+    def __init__(self, in_features, hidden_features, hidden_layers, out_features, first_omega_0=30., hidden_omega_0=30.):
+        super().__init__()
+        self.net = []
+        self.net.append(SineLayer(in_features, hidden_features, is_first=True, omega_0=first_omega_0))
+        
+        for i in range(hidden_layers):
+            self.net.append(SineLayer(hidden_features, hidden_features, is_first=False, omega_0=hidden_omega_0))
 
-            for i in range(hidden_layers):
-                self.net.append(SineLayer(hidden_features, hidden_features, is_first=False, omega_0=hidden_omega_0))
-
-            if outermost_linear:
-                  final_linear = nn.Linear(hidden_features, out_features)
-                  with torch.no_grad():
-                        final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0, np.sqrt(6 / hidden_features) / hidden_omega_0)
-
-                  self.net.append(final_linear)
-            else:
-                  self.net.append(SineLayer(hidden_features, out_features, is_first=False, omega_0=hidden_omega_0))
-
-            self.net = nn.Sequential(*self.net)
-
-      def forward(self, coords):
- 
-            coords = coords.clone().detach().requires_grad_(True) # allows to take derivative w.r.t. input
-            output = self.net(coords)
-            return output, coords
+        final_linear = nn.Linear(hidden_features, out_features)
+        with torch.no_grad():
+            final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0, np.sqrt(6 / hidden_features) / hidden_omega_0)
+        self.net.append(final_linear)
+        self.net = nn.Sequential(*self.net)
+            
+    def forward(self, coords):
+        coords = coords.clone().detach().requires_grad_(True) # allows to take derivative w.r.t. input
+        output = self.net(coords)
+        return output, coords
 
 def get_image_tensor(img):
-	
-      sidelength, _ = img.size
-      transform = Compose([Resize(sidelength), ToTensor(), Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
-      img = transform(img)
-      return img
+    
+    sidelength, _ = img.size
+    transform = Compose([Resize(sidelength), ToTensor(), Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
+    img = transform(img)
+    return img
 
 class ImageFitting_set(Dataset):
-	
-      "This is rearranged for MR dataset"
-		  
-      def __init__(self, img_dataset):
-            super().__init__()
-            sidelength, sidelength = img_dataset[0].size
-            self.orig = np.empty((len(img_dataset),img_dataset[0].size[0],img_dataset[0].size[1]))
-            self.pixels = torch.empty((len(img_dataset),sidelength**2, 1))
-            self.coords = torch.empty((len(img_dataset),sidelength**2, 2))
-            for ctr, img in enumerate(img_dataset):
-                  self.orig [ctr] = np.array(img)
-                  img = get_image_tensor(img)
-                  self.pixels[ctr] = img.permute(1, 2, 0).view(-1, 1)
-                  self.coords[ctr] = get_mgrid(sidelength, 2)
+    
+    "This is rearranged for MR dataset"
+ 
+    def __init__(self, img_dataset):
+        super().__init__()
+        sidelength, sidelength = img_dataset[0].size
+        self.orig = np.empty((len(img_dataset),img_dataset[0].size[0],img_dataset[0].size[1]))
+        self.pixels = torch.empty((len(img_dataset),sidelength**2, 1))
+        self.coords = torch.empty((len(img_dataset),sidelength**2, 2))
+        for ctr, img in enumerate(img_dataset):
+            self.orig [ctr] = np.array(img)
+            img = get_image_tensor(img)
+            self.pixels[ctr] = img.permute(1, 2, 0).view(-1, 1)
+            self.coords[ctr] = get_mgrid(sidelength, 2)
             self.mean = sum(self.orig)/len(self.orig)
             self.shape = img_dataset[0].size
-      def __len__(self):
-            return len(self.pixels)
+    def __len__(self):
+        return len(self.pixels)
 
-      def __getitem__(self, idx):
-            return self.coords, self.pixels
+    def __getitem__(self, idx):
+        return self.coords, self.pixels
 
 def laplace(y, x):
     grad = gradient(y, x)
@@ -152,63 +178,11 @@ def gradient(y, x, grad_outputs=None):
 
 
 def save_fig(array,filename,size=(2,2),dpi=600, cmap='gray'):
-      fig = plt.figure()
-      fig.set_size_inches(size)
-      ax = plt.Axes(fig, [0., 0., 1., 1.])
-      ax.set_axis_off()
-      fig.add_axes(ax)
-      plt.set_cmap(cmap)
-      ax.imshow(array, aspect='equal')
-      plt.savefig(filename, format='eps', dpi=dpi)
-
-def main():
-
-      parser = argparse.ArgumentParser()
-      parser.add_argument("folder", help="the folder that the images are stored")
-      parser.add_argument("steps", type=int, help="number of epochs to train")
-      args = parser.parse_args()
-	
-      if not os.path.isdir(args.folder):
-            print(f"No folder named {args.folder}")
-            exit(1)
-
-      img_dataset = []
-      for f in os.listdir(args.folder):
-            filename = os.path.join(args.folder, f)
-            img = Image.open(filename)
-            img_dataset.append(img)
-      dataset = ImageFitting_set(img_dataset)
-      orig = dataset.mean
-      dataloader = DataLoader(dataset, batch_size=2, pin_memory=True, num_workers=0)
-      img_siren = Siren(in_features=2, out_features=1, hidden_features=256, hidden_layers=3, outermost_linear=True)
-      img_siren.cuda()
-      net = torch.nn.DataParallel(img_siren, device_ids=[0, 1, 2])
-      torch.cuda.empty_cache()
-      optim = torch.optim.Adam(lr=1e-4, params=img_siren.parameters())
-      exp = args.folder +'_epochs'
-      filename = os.path.join(exp, 'mean.eps')
-      save_fig(orig,filename,size=(2,2),dpi=600)
-      if not os.path.isdir(exp):
-            os.mkdir(exp)
-      for step in tqdm.tqdm(range(args.steps)):
-            for sample in range(len(dataset)):
-                  ground_truth, model_input = dataset.pixels[sample], dataset.coords[sample]
-                  ground_truth, model_input = ground_truth.cuda(), model_input.cuda()
-                  model_output, coords = net(model_input)
-                  loss = ((model_output - ground_truth)**2).mean()
-                  predicted = model_output.cpu().view(420,420).detach().numpy()
-                  grad = img_grad.norm(dim=-1).cpu().view(420,420).detach().numpy()
-                  optim.zero_grad()
-                  loss.backward()
-                  optim.step()
-                  if not step % 25 and sample==11:
-                        img_filename = os.path.join(exp, 'img_' + str(step) + '.eps')
-                        save_fig(predicted,img_filename,size=(2,2),dpi=600)
-                        PATH = os.path.join(exp,'model' + str(step) + '.pt')
-                        torch.save(net.state_dict(), PATH)
-      print('Done')
-
-
-if __name__ == "__main__":
-	main()
-
+    fig = plt.figure()
+    fig.set_size_inches(size)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    plt.set_cmap(cmap)
+    ax.imshow(array, aspect='equal')
+    plt.savefig(filename, format='eps', dpi=dpi)
