@@ -26,23 +26,29 @@ def save_dicom(img, filename):
         writer.Execute(image_slice)
 
 class case:
-      def __init__(self, pt_id, cancer_loc, collateral_loc, cancer_slice, acquisitions):
-            '''
-            class for a case
-            pt_id : the patient id
-            cancer_loc : cancer location pixel (center of a 3x3 region)
-            collateral_loc : mirror of the cancer location with is non-cancer
-            cancer_slice : slice number where the cancer exists
-            acquisitions : number of slices per X, Y, Z directions 
-            '''
-            self.pt_id = pt_id
-            self.cancer_loc = cancer_loc
-            self.collateral_loc = collateral_loc
-            self.cancer_slice = cancer_slice
-            self.acquisitions = acquisitions
-            pt_no = self.pt_id.split('-')[-1]
-            filename = '../anon_data/pat' + pt_no + '_alldata.mat'
-            self.dwi = sio.loadmat(filename)['data']
+    def __init__(self, pt_id, cancer_loc, contralateral_loc, cancer_slice, acquisitions):
+        '''
+        class for a case
+        pt_id : the patient id
+        cancer_loc : cancer location pixel (center of a 3x3 region)
+        contralateral_loc : mirror of the cancer location with is non-cancer
+        cancer_slice : slice number where the cancer exists
+        acquisitions : number of slices per X, Y, Z directions 
+        '''
+        self.pt_id = pt_id
+        self.cancer_loc = cancer_loc
+        self.contralateral_loc = contralateral_loc
+        self.cancer_slice = cancer_slice
+        self.acquisitions = acquisitions
+        pt_no = self.pt_id.split('-')[-1]
+        filename = '../anon_data/pat' + pt_no + '_alldata.mat'
+        self.dwi = sio.loadmat(filename)['data']
+        filename = '../anon_data/pat' + pt_no + '_alldata.mat'
+        self.b0 = sio.loadmat(filename)['data']
+        filename = '../anon_data/pat' + pt_no + '_alldata.mat'
+        self.adc = sio.loadmat(filename)['data']
+        self.accept = np.ones(self.dwi.shape, dtype=bool)
+
 
 cases = []
 cases.append(case('17-1694-55', (63, 56), (63, 67), 13, (4, 4, 4)))
@@ -54,22 +60,22 @@ def calculate_contrast(case, scale, image, focus):
     """ calculates the contrast between the cancer and the collateral benign tissue"""
     # cancer center x,y locations
     cc_x, cc_y = tuple((i -focus)*scale for i in case.cancer_loc)
-    # collateral benign x,y locations
-    cb_x, cb_y = tuple((i -focus)*scale for i in case.collateral_loc)
+    # contralateral benign x,y locations
+    cb_x, cb_y = tuple((i -focus)*scale for i in case.contralateral_loc)
     cancer_area = image[cc_x - scale : cc_x + scale, cc_y - scale : cc_y + scale]
-    collateral_area = image[cb_x - scale : cb_x + scale, cb_y - scale : cb_y + scale]
+    contralateral_area = image[cb_x - scale : cb_x + scale, cb_y - scale : cb_y + scale]
     
     #cancer_mean
     cm = cancer_area.mean()
     #begign_mean
-    bm = collateral_area.mean()
+    bm = contralateral_area.mean()
     #cancer_variance
     varc = np.std(cancer_area)**2
     #benign variance
-    varb = np.std(collateral_area)**2
+    varb = np.std(contralateral_area)**2
     
-    C = (cancer_area.mean() - collateral_area.mean())/cancer_area.mean()
-    CNR = (cancer_area.mean() - collateral_area.mean())/np.sqrt(varc + varb)
+    C = (cancer_area.mean() / contralateral_area.mean())
+    CNR = (cancer_area.mean() - contralateral_area.mean())/np.sqrt(varc + varb)
     return C, CNR
 
 def get_mgrid(sidelen, dim=2):

@@ -23,17 +23,17 @@ total_steps = 3000
 seg = 50
 gland_start = 40
 focus_size = 50
-weighted = True
+weighted = False
 sigma_est = 2
 hidden_layers = 2
-hidden_features = 256
+hidden_features = 128
 scale = 1
 patch_kw = dict(patch_size=3, patch_distance=3)
 
 metrics = ['C', 'CNR']
 
 method_name = 'sr1'
-exp_no = 4
+exp_no = 0
 filename = os.path.join(out_folder, method_name + '_exp_' + str(exp_no) + '.csv')
 with open(filename, 'w') as f:
     f.write('seed,patient,direction,epoch,image,metric,performance\n')
@@ -123,6 +123,7 @@ for seed in range(5):
                                        **patch_kw)
         nlm = denoise
         out_img = noisy
+        images = {'mean':orig, 'reconst':pr, 'superres':out_img, 'NLM':nlm}
         with open(filename, 'a') as f:
             for image in images.keys():
                 for inx, metric in enumerate(metrics):

@@ -1,6 +1,6 @@
 style = directional
 steps = 3000
-focus = gland
+focus = wide
 weight = False
 depth = 2
 hidden = 128
