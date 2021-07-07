@@ -74,7 +74,7 @@ def calculate_contrast(case, scale, image, focus):
     #benign variance
     varb = np.std(contralateral_area)**2
     
-    C = (cancer_area.mean() / contralateral_area.mean())
+    C = (cancer_area.mean() / (contralateral_area.mean() + 1e-7))
     CNR = (cancer_area.mean() - contralateral_area.mean())/np.sqrt(varc + varb)
     return C, CNR
 
