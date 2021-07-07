@@ -53,7 +53,7 @@ class case:
 cases = []
 cases.append(case('17-1694-55', (63, 56), (63, 67), 13, (4, 4, 4)))
 cases.append(case('18-1681-07', (67, 71), (67, 59), 11, (8, 8, 8)))
-cases.append(case('18-1681-08', (79, 71), (79, 59), 10, (8, 7, 8)))
+cases.append(case('18-1681-08', (79, 71), (79, 57), 10, (8, 7, 8)))
 cases.append(case('18-1681-09', (60, 66), (60, 57), 15, (8, 8, 8)))
 
 def calculate_contrast(case, scale, image, focus):
