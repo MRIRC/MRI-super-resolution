@@ -26,7 +26,7 @@ def save_dicom(img, filename):
         writer.Execute(image_slice)
 
 class case:
-    def __init__(self, pt_id, cancer_loc, contralateral_loc, cancer_slice, acquisitions):
+    def __init__(self, pt_id, b, cancer_loc, contralateral_loc, cancer_slice, acquisitions):
         '''
         class for a case
         pt_id : the patient id
@@ -40,21 +40,27 @@ class case:
         self.contralateral_loc = contralateral_loc
         self.cancer_slice = cancer_slice
         self.acquisitions = acquisitions
+        self.b = b
         pt_no = self.pt_id.split('-')[-1]
+        eps = 1e-7 #to avoid division by zero and log of zero errors in ADC calculation
         filename = '../anon_data/pat' + pt_no + '_alldata.mat'
         self.dwi = sio.loadmat(filename)['data']
-        filename = '../anon_data/pat' + pt_no + '_alldata.mat'
-        self.b0 = sio.loadmat(filename)['data']
-        filename = '../anon_data/pat' + pt_no + '_alldata.mat'
-        self.adc = sio.loadmat(filename)['data']
-        self.accept = np.ones(self.dwi.shape, dtype=bool)
+        filename = '../anon_data/pat' + pt_no + '_mean_b0.mat'
+        self.b0 = sio.loadmat(filename)['data_mean_b0']
+        filename = '../anon_data/pat' + pt_no + '_ADC_alldata_mm.mat'
+        self.accept = np.ones(self.dwi.shape, dtype=int)
+        try :
+            self.adc = sio.loadmat(filename)['ADC_alldata_mm']
+        except OSError:
+            rep_b0 = np.transpose(np.tile(self.b0,(self.dwi.shape[-1],1,1,1)),(1,2,3,0))
+            self.adc = -(np.log(self.dwi/(rep_b0 + 1e-7) + 1e-7)/self.b)*1000
 
-
+                         
 cases = []
-cases.append(case('17-1694-55', (63, 56), (63, 67), 13, (4, 4, 4)))
-cases.append(case('18-1681-07', (67, 71), (67, 59), 11, (8, 8, 8)))
-cases.append(case('18-1681-08', (79, 71), (79, 57), 10, (8, 7, 8)))
-cases.append(case('18-1681-09', (60, 66), (60, 57), 15, (8, 8, 8)))
+cases.append(case('17-1694-55', 1500, (56, 58), (56, 69), 13, (4, 4, 4)))
+cases.append(case('18-1681-07', 900, (67, 71), (67, 59), 11, (8, 8, 8)))
+cases.append(case('18-1681-08', 900, (79, 71), (79, 57), 10, (8, 7, 8)))
+cases.append(case('18-1681-09', 900, (60, 66), (60, 57), 15, (8, 8, 8)))
 
 def calculate_contrast(case, scale, image, focus):
     """ calculates the contrast between the cancer and the collateral benign tissue"""
@@ -75,7 +81,7 @@ def calculate_contrast(case, scale, image, focus):
     varb = np.std(contralateral_area)**2
     
     C = (cancer_area.mean() / (contralateral_area.mean() + 1e-7))
-    CNR = (cancer_area.mean() - contralateral_area.mean())/np.sqrt(varc + varb)
+    CNR = abs(cancer_area.mean() - contralateral_area.mean())/np.sqrt(varc + varb)
     return C, CNR
 
 def get_mgrid(sidelen, dim=2):
