@@ -57,10 +57,10 @@ class case:
 
                          
 cases = []
-cases.append(case('17-1694-55', 1500, (56, 58), (56, 69), 13, (4, 4, 4)))
+cases.append(case('17-1694-55', 1500, (60, 57), (60, 69), 13, (4, 4, 4)))
 cases.append(case('18-1681-07', 900, (67, 71), (67, 59), 11, (8, 8, 8)))
 cases.append(case('18-1681-08', 900, (79, 71), (79, 57), 10, (8, 7, 8)))
-cases.append(case('18-1681-09', 900, (60, 66), (60, 57), 15, (8, 8, 8)))
+cases.append(case('18-1681-09', 900, (63, 63), (63, 55), 15, (8, 8, 8)))
 
 def calculate_contrast(case, scale, image, focus):
     """ calculates the contrast between the cancer and the collateral benign tissue"""
