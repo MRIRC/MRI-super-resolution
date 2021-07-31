@@ -48,7 +48,7 @@ def main():
     cvs_filename = os.path.join(args.out_folder, args.experiment_name + '.csv')
     
     with open(cvs_filename, 'w') as f:
-        f.write('seed,patient,direction,image,metric,performance\n')
+        f.write('seed,patient,image,metric,performance\n')
     
     for seed in range(args.repeat_time):
         torch.manual_seed(seed)
@@ -170,7 +170,7 @@ def main():
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
-                        f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, directions[direction],image, metric,  
+                        f.write('{},{},{},{},{}\n'.format(seed, pt_no,image, metric,  
                                                                         calculate_contrast(case, 1, images[image], 0)[inx]))
     
 if __name__ == "__main__":
