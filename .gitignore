@@ -5,3 +5,4 @@
 *.ipynb
 /output_images
 /experiments
+*.dcm
