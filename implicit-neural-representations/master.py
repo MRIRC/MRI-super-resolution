@@ -21,6 +21,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 import os
 import argparse
 
+# Avery Rosado Branch develop_airosado1 - x2
+
 parser = argparse.ArgumentParser(description='Superresolution of DWI/ADC maps enhanced with AutoERD')
 parser.add_argument('--out_folder', default='../experiments/', help='directory to save the quantitative results')
 parser.add_argument('--out_img_folder', default='../output_images/', help='directory to save the images')
