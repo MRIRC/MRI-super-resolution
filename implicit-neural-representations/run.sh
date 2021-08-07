@@ -12,8 +12,8 @@
 
 # Load all required modules below. As an example we load cuda/9.1
 module unload cuda
-module load cuda/10.0
+module load cuda/10.2
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py
+python -u master.py --out_img_folder OUT_IMG_FOLDER  
