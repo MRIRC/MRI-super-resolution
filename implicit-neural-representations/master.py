@@ -48,7 +48,10 @@ def main():
         os.makedirs(args.out_folder)
 
     cvs_filename = os.path.join(args.out_folder, args.experiment_name + '.csv')
+    if not os.path.exists(args.out_img_folder):
+	os.makedirs(args.out_img_folder)
     
+    dcm_filename = os.path.join(args.out_img_folder, args.img_name + '.dcm')
 
     with open(cvs_filename, 'w') as f:
         f.write('seed,patient,image,metric,performance\n')

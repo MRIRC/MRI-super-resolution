@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=quant.test_airosado   # job name
-#SBATCH --output=quant.out.test_airosado # output log file
+#SBATCH --job-name=quant.test   # job name
+#SBATCH --output=quant.out.test # output log file
 
 #SBATCH --error=gpu.err  # error file
 #SBATCH --time=01:00:00  # 1 hour of wall time
