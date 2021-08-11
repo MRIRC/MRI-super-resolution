@@ -54,7 +54,7 @@ def main():
     cvs_filename = os.path.join(args.out_folder, args.exp_name + '.csv')
     
     with open(cvs_filename, 'w') as f:
-        f.write('seed,patient,image,metric,performance\n')
+        f.write('seed,patient,direction,image,metric,performance\n')
     
     for seed in range(args.repeat_time):
         torch.manual_seed(seed)
@@ -63,6 +63,9 @@ def main():
             predicted_XYZ = []
             original_XYZ = []
             large_xyz = []
+            pred_ADC_XYZ = []
+            large_ADC_xyz = []
+            ADC_xyz = []
             directions = ['x', 'y', 'z']
             _slice = case.cancer_slice
             img = case.dwi[:, :, _slice, :] #TODO: This will be conducted on all slides later
@@ -160,33 +163,57 @@ def main():
                 out_img = minmax_normalize(out_img, accepted_mean)
                 large_out = minmax_normalize(large_out, accepted_mean)               
                 # TODO: Calculate ADC for each direction
+                b = case.b
+                b0 = case.b0[:, :, _slice]
+                b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
+                adc_orig = -np.log((orig/(b0 + eps)) + eps)/b 
+                adc_orig *= 1000000
+                adc_large = -np.log((large/(b0_scaled + eps)) + eps)/b 
+                adc_large *= 1000000
+                adc_superres = -np.log((predicted/(b0 + eps)) + eps)/b
+                adc_superres *= 1000000
+                
+                
+                
                 # TODO: Save ADC images for each direction
+                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_mean.dcm'
+                filename = os.path.join(args.out_img_folder, img_name)
+                save_dicom(orig, filename)
+                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_super.dcm'
+                filename = os.path.join(args.out_img_folder, img_name)
+                save_dicom(large, filename)
+                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_mean_adc.dcm'
+                filename = os.path.join(args.out_img_folder, img_name)
+                save_dicom(adc_orig, filename)
+                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_super_adc.dcm'
+                filename = os.path.join(args.out_img_folder, img_name)
+                save_dicom(adc_large, filename)
+                
+                images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
+
+                with open(cvs_filename, 'a') as f:
+                    for image in images.keys():
+                        for inx, metric in enumerate(metrics):
+                            f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, directions[direction],image, metric,  
+                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
+                
                 
                         
                 predicted_XYZ.append(out_img)
                 large_xyz.append(large_out)
-                # TODO: append ADC as well
+                pred_ADC_XYZ.append(adc_superres)
+                large_ADC_xyz.append(adc_large)
+                ADC_xyz.append(adc_orig)
+
                 
                 
             predicted = sum(predicted_XYZ)/len(predicted_XYZ)
             orig = sum(original_XYZ)/len(original_XYZ)
             large = sum(large_xyz)/len(large_xyz)
-            
-            if predicted.min() < 0:
-                predicted -= predicted.min()
-            if large.min() < 0:
-                large -= large.min()
-            
-            # TODO: This calculation will be taken in the loop
-            b0 = case.b0[:, :, _slice]
-            b = case.b
-            b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
-            adc_orig = -np.log((orig/(b0 + eps)) + eps)/b 
-            adc_orig *= 1000000
-            adc_large = -np.log((large/(b0_scaled + eps)) + eps)/b 
-            adc_large *= 1000000
-            adc_superres = -np.log((predicted/(b0 + eps)) + eps)/b
-            adc_superres *= 1000000
+            adc_superres = sum(pred_ADC_XYZ)/len(pred_ADC_XYZ)
+            adc_large = sum(large_ADC_xyz)/len(large_ADC_xyz)
+            adc_orig = sum(ADC_xyz)/len(ADC_xyz)
+
             
             filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_mean.dcm')
             save_dicom(orig, filename)
@@ -196,17 +223,14 @@ def main():
             save_dicom(adc_orig, filename)
             filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_super_adc.dcm')
             save_dicom(adc_large, filename)
-            
-
-  
-            
+                        
                                 
             images = {'mean':orig, 'superres':predicted, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
 			# TODO: We may consider putting direction in the file again
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
-                        f.write('{},{},{},{},{}\n'.format(seed, pt_no,image, metric,  
+                        f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
                                                                         calculate_contrast(case, 1, images[image], 0)[inx]))
     
 if __name__ == "__main__":
