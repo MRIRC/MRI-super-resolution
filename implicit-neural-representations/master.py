@@ -21,7 +21,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 import os
 import argparse
 
-# Avery Rosado Branch develop_airosado1 - x2
 
 parser = argparse.ArgumentParser(description='Superresolution of DWI/ADC maps enhanced with AutoERD')
 parser.add_argument('--out_folder', default='../experiments/', help='directory to save the quantitative results')
@@ -32,7 +31,7 @@ parser.add_argument('--hidden_layers', type=int, default=6, help='depth of the n
 parser.add_argument('--hidden_features', type=int, default=64, help='number of neurons on each layer')
 parser.add_argument('--learning_rate', type=float, default=0.0003, help='learning rate')
 parser.add_argument('--scale', type=int, default=3, help='scaling factor super-resolution')
-parser.add_argument('--experiment_name', default='sr2', help='name of the experiment')
+parser.add_argument('--exp_name', default='sr2', help='name of the experiment')
 parser.add_argument('--repeat_time', type=int, default=1, help='run the experiment multiple times to account for randomness')
 parser.add_argument('--erd', action='store_true', help='conduct AutoERD with agglomerative clustering before training')
 
@@ -47,7 +46,7 @@ def main():
     if not os.path.exists(args.out_folder):
         os.makedirs(args.out_folder)
 
-    cvs_filename = os.path.join(args.out_folder, args.experiment_name + '.csv')
+    cvs_filename = os.path.join(args.out_folder, args.exp_name + '.csv')
     
     with open(cvs_filename, 'w') as f:
         f.write('seed,patient,image,metric,performance\n')
@@ -74,13 +73,34 @@ def main():
                         for k in range(2):
                             if (sample_lens[k] >= (2/3)*case.dwi.shape[3]):# and sample_means[k] > sample_means[1-k] ):
                                 case.accept[i, j, _slice, inx[db.labels_== (1-k)]] = 0 
-                                
+                                            
             for direction in range(3):  # gradient directions x, y, z
                 print(f'Training for {directions[direction]} direction...')
                 ends = np.cumsum(case.acquisitions)
                 starts = ends - case.acquisitions
                 img_dataset = []
                 accept_weights = []
+                # TODO: Calculate and print the mean-max-min of the remaining signals per each direction
+                sum_image = np.zeros((128, 128)) #TODO: make the sizes dynamic
+            	sum_accepted = np.zeros((128, 128))
+            	sum_accepts = np.zeros((128, 128))
+            	ctr = 0
+            	for acq in range(starts[direction], ends[direction]):
+                	img = case.dwi[:, :, _slice, acq]    
+                	accept = case.accept[:, :, _slice, acq]
+                	sum_image += img
+                	sum_accepted += img*accept
+                	sum_accepts += accept
+                	ctr += 1	
+            	accepted_mean = sum_accepted/sum_accepts
+            	direction_mean = sum_image/ctr
+            	
+            	print(directions[direction], direction_mean.min(), direction_mean.max(), direction_mean.mean())
+            	print(directions[direction], accepted_mean.min(), accepted_mean.max(), accepted_mean.mean())
+            	
+            	print(directions[direction], direction_mean[40:90, 40:90].min(), direction_mean[40:90, 40:90].max(), direction_mean[40:90, 40:90].mean())
+            	print(directions[direction], accepted_mean[40:90, 40:90].min(), accepted_mean[40:90, 40:90].max(), accepted_mean[40:90, 40:90].mean())
+                # TODO: This value is to be calculated over the prostate region
                 for acq in range(starts[direction], ends[direction]):
                     img = case.dwi[:, :, _slice, acq]
                     accept = case.accept[:, :, _slice, acq]
@@ -131,9 +151,16 @@ def main():
                         large += superres_large.cpu().view(size[0]*args.scale, size[1]*args.scale).detach().numpy()
                 out_img = predicted/100
                 large_out = large/100
+                
+                # TODO: Normalize predicted output to match the range of the original image
+                # TODO: Calculate ADC for each direction
+                # TODO: Save ADC images for each direction
+                
                         
                 predicted_XYZ.append(out_img)
                 large_xyz.append(large_out)
+                # TODO: append ADC as well
+                
                 
             predicted = sum(predicted_XYZ)/len(predicted_XYZ)
             orig = sum(original_XYZ)/len(original_XYZ)
@@ -144,6 +171,7 @@ def main():
             if large.min() < 0:
                 large -= large.min()
             
+            # TODO: This calculation will be taken in the loop
             b0 = case.b0[:, :, _slice]
             b = case.b
             b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
@@ -168,7 +196,7 @@ def main():
             
                                 
             images = {'mean':orig, 'superres':predicted, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
-
+			# TODO: We may consider putting direction in the file again
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
