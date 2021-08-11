@@ -82,24 +82,23 @@ def main():
                 accept_weights = []
                 # TODO: Calculate and print the mean-max-min of the remaining signals per each direction
                 sum_image = np.zeros((128, 128)) #TODO: make the sizes dynamic
-            	sum_accepted = np.zeros((128, 128))
-            	sum_accepts = np.zeros((128, 128))
-            	ctr = 0
-            	for acq in range(starts[direction], ends[direction]):
-                	img = case.dwi[:, :, _slice, acq]    
-                	accept = case.accept[:, :, _slice, acq]
-                	sum_image += img
-                	sum_accepted += img*accept
-                	sum_accepts += accept
-                	ctr += 1	
-            	accepted_mean = sum_accepted/sum_accepts
-            	direction_mean = sum_image/ctr
-            	
-            	print(directions[direction], direction_mean.min(), direction_mean.max(), direction_mean.mean())
-            	print(directions[direction], accepted_mean.min(), accepted_mean.max(), accepted_mean.mean())
-            	
-            	print(directions[direction], direction_mean[40:90, 40:90].min(), direction_mean[40:90, 40:90].max(), direction_mean[40:90, 40:90].mean())
-            	print(directions[direction], accepted_mean[40:90, 40:90].min(), accepted_mean[40:90, 40:90].max(), accepted_mean[40:90, 40:90].mean())
+                sum_accepted = np.zeros((128, 128))
+                sum_accepts = np.zeros((128, 128))
+                ctr = 0
+                for acq in range(starts[direction], ends[direction]):
+                    img = case.dwi[:, :, _slice, acq]    
+                    accept = case.accept[:, :, _slice, acq]
+                    sum_image += img
+                    sum_accepted += img*accept
+                    sum_accepts += accept
+                    ctr += 1	
+                accepted_mean = sum_accepted/sum_accepts
+                direction_mean = sum_image/ctr
+
+                print(directions[direction], direction_mean.min(), direction_mean.max(), direction_mean.mean())
+                print(directions[direction], accepted_mean.min(), accepted_mean.max(), accepted_mean.mean())
+                print(directions[direction], direction_mean[40:90, 40:90].min(), direction_mean[40:90, 40:90].max(), direction_mean[40:90, 40:90].mean())
+                print(directions[direction], accepted_mean[40:90, 40:90].min(), accepted_mean[40:90, 40:90].max(), accepted_mean[40:90, 40:90].mean())
                 # TODO: This value is to be calculated over the prostate region
                 for acq in range(starts[direction], ends[direction]):
                     img = case.dwi[:, :, _slice, acq]
