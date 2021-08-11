@@ -40,6 +40,11 @@ args = parser.parse_args()
 metrics = ['C', 'CNR']
 eps = 1e-7
 
+def minmax_normalize(img, ref):
+
+    return ((img - img.min())/(img.max() - img.min()))*(ref.max() - ref.min()) + ref.min()
+
+
 
 def main():
     
@@ -152,6 +157,8 @@ def main():
                 large_out = large/100
                 
                 # TODO: Normalize predicted output to match the range of the original image
+                out_img = minmax_normalize(out_img, accepted_mean)
+                large_out = minmax_normalize(large_out, accepted_mean)               
                 # TODO: Calculate ADC for each direction
                 # TODO: Save ADC images for each direction
                 
