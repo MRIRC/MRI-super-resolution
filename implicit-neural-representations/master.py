@@ -88,10 +88,9 @@ def main():
                 starts = ends - case.acquisitions
                 img_dataset = []
                 accept_weights = []
-                # TODO: Calculate and print the mean-max-min of the remaining signals per each direction
-                sum_image = np.zeros((128, 128)) #TODO: make the sizes dynamic
-                sum_accepted = np.zeros((128, 128))
-                sum_accepts = np.zeros((128, 128))
+                sum_image = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
+                sum_accepted = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
+                sum_accepts = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
                 ctr = 0
                 for acq in range(starts[direction], ends[direction]):
                     img = case.dwi[:, :, _slice, acq]    
@@ -103,11 +102,6 @@ def main():
                 accepted_mean = sum_accepted/sum_accepts
                 direction_mean = sum_image/ctr
 
-                print(directions[direction], direction_mean.min(), direction_mean.max(), direction_mean.mean())
-                print(directions[direction], accepted_mean.min(), accepted_mean.max(), accepted_mean.mean())
-                print(directions[direction], direction_mean[40:90, 40:90].min(), direction_mean[40:90, 40:90].max(), direction_mean[40:90, 40:90].mean())
-                print(directions[direction], accepted_mean[40:90, 40:90].min(), accepted_mean[40:90, 40:90].max(), accepted_mean[40:90, 40:90].mean())
-                # TODO: This value is to be calculated over the prostate region
                 for acq in range(starts[direction], ends[direction]):
                     img = case.dwi[:, :, _slice, acq]
                     accept = case.accept[:, :, _slice, acq]
@@ -159,35 +153,30 @@ def main():
                 out_img = predicted/100
                 large_out = large/100
                 
-                # TODO: Normalize predicted output to match the range of the original image
                 out_img = minmax_normalize(out_img, accepted_mean)
                 large_out = minmax_normalize(large_out, accepted_mean)               
-                # TODO: Calculate ADC for each direction
                 b = case.b
                 b0 = case.b0[:, :, _slice]
                 b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
                 adc_orig = -np.log((orig/(b0 + eps)) + eps)/b 
                 adc_orig *= 1000000
-                adc_large = -np.log((large/(b0_scaled + eps)) + eps)/b 
+                adc_large = -np.log((large_out/(b0_scaled + eps)) + eps)/b 
                 adc_large *= 1000000
-                adc_superres = -np.log((predicted/(b0 + eps)) + eps)/b
+                adc_superres = -np.log((out_img/(b0 + eps)) + eps)/b
                 adc_superres *= 1000000
                 
-                
-                
-                # TODO: Save ADC images for each direction
-                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_mean.dcm'
+                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_mean.dcm'
                 filename = os.path.join(args.out_img_folder, img_name)
                 save_dicom(orig, filename)
-                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_super.dcm'
+                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_super.dcm'
                 filename = os.path.join(args.out_img_folder, img_name)
-                save_dicom(large, filename)
-                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_mean_adc.dcm'
+                save_dicom(large_out, filename)
+                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_mean_adc.dcm'
                 filename = os.path.join(args.out_img_folder, img_name)
                 save_dicom(adc_orig, filename)
-                img_name = args.experiment_name + '_' + directions[direction]+ '_' + pt_no + '_super_adc.dcm'
+                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_super_adc.dcm'
                 filename = os.path.join(args.out_img_folder, img_name)
-                save_dicom(adc_large, filename)
+                save_dicom(adc_superres, filename)
                 
                 images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
 
@@ -215,18 +204,17 @@ def main():
             adc_orig = sum(ADC_xyz)/len(ADC_xyz)
 
             
-            filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_mean.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_mean.dcm')
             save_dicom(orig, filename)
-            filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_super.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_super.dcm')
             save_dicom(large, filename)
-            filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_mean_adc.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_mean_adc.dcm')
             save_dicom(adc_orig, filename)
-            filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_super_adc.dcm')
-            save_dicom(adc_large, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_super_adc.dcm')
+            save_dicom(adc_superres, filename)
                         
                                 
             images = {'mean':orig, 'superres':predicted, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
-			# TODO: We may consider putting direction in the file again
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):

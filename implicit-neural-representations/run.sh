@@ -16,4 +16,4 @@ module load cuda/10.2
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py
+python -u master.py --erd
