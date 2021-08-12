@@ -48,14 +48,9 @@ def main():
         os.makedirs(args.out_folder)
 
     cvs_filename = os.path.join(args.out_folder, args.experiment_name + '.csv')
-    if not os.path.exists(args.out_img_folder):
-	os.makedirs(args.out_img_folder)
-    
-    dcm_filename = os.path.join(args.out_img_folder, args.img_name + '.dcm')
 
     with open(cvs_filename, 'w') as f:
-        f.write('seed,patient,image,metric,performance\n')
-    
+        f.write('seed,patient,image,metric,performance\n')	
     for seed in range(args.repeat_time):
         torch.manual_seed(seed)
         for case in cases:
@@ -158,14 +153,17 @@ def main():
             adc_superres = -np.log((predicted/(b0 + eps)) + eps)/b
             adc_superres *= 1000000
             
+            if not os.path.exists(args.out_img_folder):
+	        os.makedirs(args.out_img_folder)
+
             filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_mean.dcm')
-            save_dicom(orig, filename)
+                                    save_dicom(orig, filename)
             filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_super.dcm')
-            save_dicom(large, filename)
+                                    save_dicom(large, filename)
             filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_mean_adc.dcm')
-            save_dicom(adc_orig, filename)
+                                    save_dicom(adc_orig, filename)
             filename = os.path.join(args.out_img_folder, args.experiment_name + '_' + pt_no + '_super_adc.dcm')
-            save_dicom(adc_large, filename)
+                                    save_dicom(adc_large, filename)
             
 
   

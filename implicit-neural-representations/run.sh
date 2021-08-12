@@ -16,4 +16,4 @@ module load cuda/10.2
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py --out_img_folder OUT_IMG_FOLDER  
+python -u master1.py --out_img_folder OUT_IMG_FOLDER  
