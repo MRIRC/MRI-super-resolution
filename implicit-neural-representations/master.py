@@ -143,8 +143,6 @@ def main():
                         superres_large, _ = img_siren(coords_large)
                         predicted = superres.cpu().view(size[0], size[1]).detach().numpy()
                         large = superres_large.cpu().view(size[0]*args.scale, size[1]*args.scale).detach().numpy()
-                        out_img = predicted
-                        large_out = large
                     elif step > args.total_steps-args.seg:
                         superres, _ = img_siren(coords2)
                         superres_large, _ = img_siren(coords_large)
@@ -167,7 +165,7 @@ def main():
                 adc_superres = -np.log((out_img/(b0 + eps)) + eps)/b
                 adc_superres *= 1000000
                 
-                images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_super':adc_superres}
+                images = {'mean':orig*1000, 'superres':out_img*1000, 'ADC_orig': adc_orig, 'ADC_super':adc_superres}
 
                 with open(cvs_filename, 'a') as f:
                     for image in images.keys():
@@ -192,14 +190,16 @@ def main():
             adc_orig = sum(ADC_xyz)/len(ADC_xyz)
 
             
-            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_mean.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
             save_dicom(orig, filename)
-            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_super.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'super.dcm')
             save_dicom(large, filename)
-            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_mean_adc.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'mean.dcm')
             save_dicom(adc_orig, filename)
-            filename = os.path.join(args.out_img_folder, args.exp_name + '_' + pt_no + '_super_adc.dcm')
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'super.dcm')
             save_dicom(adc_superres, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'large.dcm')
+            save_dicom(adc_large, filename)
                         
                                 
             images = {'mean':orig, 'superres':predicted, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
