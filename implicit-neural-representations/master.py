@@ -150,11 +150,13 @@ def main():
                         superres_large, _ = img_siren(coords_large)
                         predicted += superres.cpu().view(size[0], size[1]).detach().numpy()
                         large += superres_large.cpu().view(size[0]*args.scale, size[1]*args.scale).detach().numpy()
-                out_img = predicted/100
-                large_out = large/100
-                
-                out_img = minmax_normalize(out_img, accepted_mean)
-                large_out = minmax_normalize(large_out, accepted_mean)               
+
+                out_img = predicted/args.seg
+                large_out = large/args.seg
+                out_img -= out_img.min()
+                large_out -= large_out.min()                
+                #out_img = minmax_normalize(out_img, direction_mean)
+                #large_out = minmax_normalize(large_out, direction_mean)               
                 b = case.b
                 b0 = case.b0[:, :, _slice]
                 b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
@@ -165,20 +167,7 @@ def main():
                 adc_superres = -np.log((out_img/(b0 + eps)) + eps)/b
                 adc_superres *= 1000000
                 
-                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_mean.dcm'
-                filename = os.path.join(args.out_img_folder, img_name)
-                save_dicom(orig, filename)
-                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_super.dcm'
-                filename = os.path.join(args.out_img_folder, img_name)
-                save_dicom(large_out, filename)
-                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_mean_adc.dcm'
-                filename = os.path.join(args.out_img_folder, img_name)
-                save_dicom(adc_orig, filename)
-                img_name = args.exp_name + '_' + directions[direction]+ '_' + pt_no + '_super_adc.dcm'
-                filename = os.path.join(args.out_img_folder, img_name)
-                save_dicom(adc_superres, filename)
-                
-                images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_new':adc_superres}
+                images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_super':adc_superres}
 
                 with open(cvs_filename, 'a') as f:
                     for image in images.keys():
@@ -187,7 +176,6 @@ def main():
                                                                         calculate_contrast(case, 1, images[image], 0)[inx]))
                 
                 
-                        
                 predicted_XYZ.append(out_img)
                 large_xyz.append(large_out)
                 pred_ADC_XYZ.append(adc_superres)
