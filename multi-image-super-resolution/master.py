@@ -1,9 +1,11 @@
 from nn_mri import cases, save_dicom # calculate_contrast, 
 from utils.network import RAMS
-from utils.prediction import predict_tensor,
+from utils.prediction import predict_tensor
 import tensorflow as tf
 import numpy as np
-
+import random
+from tqdm import tqdm
+import os
 import argparse
 
 
@@ -37,8 +39,8 @@ def main():
         lor = np.expand_dims(low_res_seq, 0).astype('uint16')
         lor = (lor)*256
         mean_pred = np.zeros((128*3, 128*3))
-        sample_size = 50
-        for k in range(sample_size):
+        sample_size = 25
+        for k in tqdm(range(sample_size)):
             inx = random.sample(list(range(num_acq)),9)
             #inx_str = [str(x) for x in sorted(inx)]
             #names = img_fname.split('_')
@@ -46,9 +48,9 @@ def main():
             img = predict_tensor(rams_network, lor[:,:,:,inx])[0,:,:,0]
             mean_pred += img
         mean_pred /= sample_size
-    pt_no = case.pt_id.split('-')[-1]
-    filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
-    save_dicom(mean_pred, img_fname)
+        pt_no = case.pt_id.split('-')[-1]
+        filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
+        save_dicom(mean_pred, filename)
 
     
     

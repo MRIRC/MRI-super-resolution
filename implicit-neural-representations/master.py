@@ -153,8 +153,8 @@ def main():
                 large_out = large/args.seg
                 out_img -= out_img.min()
                 large_out -= large_out.min()                
-                #out_img = minmax_normalize(out_img, direction_mean)
-                #large_out = minmax_normalize(large_out, direction_mean)               
+                out_img = minmax_normalize(out_img, direction_mean)
+                large_out = minmax_normalize(large_out, direction_mean)               
                 b = case.b
                 b0 = case.b0[:, :, _slice]
                 b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
