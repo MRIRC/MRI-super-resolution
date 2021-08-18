@@ -7,6 +7,7 @@ import random
 from tqdm import tqdm
 import os
 import argparse
+from skimage.transform import rescale
 
 
 parser = argparse.ArgumentParser(description='Superresolution of DWI/ADC maps with Multi-image SR')
@@ -22,6 +23,7 @@ KERNEL_SIZE = 3
 CHANNELS = 9
 R = 8
 N = 12
+eps = 1e-7
 checkpoint_dir = f'ckpt/RED_RAMS'
 
 def main():
@@ -48,9 +50,16 @@ def main():
             img = predict_tensor(rams_network, lor[:,:,:,inx])[0,:,:,0]
             mean_pred += img
         mean_pred /= sample_size
+        b = case.b
+        b0 = case.b0[:, :, case.cancer_slice]
+        b0_scaled = rescale(b0, SCALE, anti_aliasing=False)
+        adc_large = -np.log((mean_pred/(b0_scaled + eps)) + eps)/b 
+        adc_large *= 1000000
         pt_no = case.pt_id.split('-')[-1]
         filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
         save_dicom(mean_pred, filename)
+        filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'mean.dcm')
+        save_dicom(adc_large, filename)
 
     
     
