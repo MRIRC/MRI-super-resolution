@@ -11,8 +11,8 @@ from skimage.transform import rescale
 
 
 parser = argparse.ArgumentParser(description='Superresolution of DWI/ADC maps with Multi-image SR')
-parser.add_argument('--out_folder', default='../experiments/', help='directory to save the quantitative results')
-parser.add_argument('--out_img_folder', default='../output_images/', help='directory to save the images')
+parser.add_argument('--out_folder', default='../experiments.mi/', help='directory to save the quantitative results')
+parser.add_argument('--out_img_folder', default='../output_images.mi/', help='directory to save the images')
 parser.add_argument('--exp_name', default='sr2', help='name of the experiment')
 
 args = parser.parse_args()

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=mi   # job name
-#SBATCH --output=mi.out # output log file
+#SBATCH --job-name=multi   # job name
+#SBATCH --output=multi.out # output log file
 
 #SBATCH --error=gpu.err  # error file
 #SBATCH --time=01:00:00  # wall time
@@ -11,4 +11,4 @@
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py  --exp_name mi
+python -u master.py  --exp_name multi-image1
