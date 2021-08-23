@@ -39,14 +39,15 @@ parser.add_argument('--erd', action='store_true', help='conduct AutoERD with agg
 args = parser.parse_args()
 metrics = ['C', 'CNR']
 eps = 1e-7
+mag = 1000
 
 def minmax_normalize(img, ref):
 
     return ((img - img.min())/(img.max() - img.min()))*(ref.max() - ref.min()) + ref.min()
 
 def calc_adc(dwi, b0, b):
-	adc = -np.log((orig/(b0 + eps)) + eps)/b 
-    return adc*1000000
+    adc = -np.log((dwi/(b0 + eps)) + eps)/b 
+    return adc*mag*mag
 
 def main():
     
@@ -62,12 +63,6 @@ def main():
         torch.manual_seed(seed)
         for case in cases:
             print(case.pt_id)            
-            #predicted_XYZ = []
-            #original_XYZ = []
-            #large_xyz = []
-            #pred_ADC_XYZ = []
-            #large_ADC_xyz = []
-            #ADC_xyz = []
             directions = ['x', 'y', 'z']
             _slice = case.cancer_slice
             b = case.b
@@ -126,7 +121,7 @@ def main():
                                   hidden_layers=args.hidden_layers)
                 img_siren.cuda()
                 torch.cuda.empty_cache()
-                optim = torch.optim.Adam(lr=0.0003, params=img_siren.parameters())
+                optim = torch.optim.Adam(lr=args.learning_rate, params=img_siren.parameters())
                 ctr = 1
                 for step in tqdm(range(args.total_steps)):
                     size = dataset.shape
@@ -164,18 +159,20 @@ def main():
 
                 b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
                 
-                adc_erd = calc(erd_img, b0, b)
+                adc_erd = calc_adc(erd_img, b0, b)
                 adc_orig = calc_adc(orig, b0, b) 
                 adc_large =  calc_adc(large_out, b0_scaled, b)                 
                 adc_superres = calc_adc(out_img, b0, b)
                 adc_norm = calc_adc(norm_out_img, b0, b)
-                adc_large_norm = calc_adc(norm_large_out, b0_scaled)
+                adc_large_norm = calc_adc(norm_large_out, b0_scaled, b)
 
                 
-                images = {'mean':orig*1000, 
-                		  'superres':out_img*1000, 
-                		  'ADC_orig': adc_orig, 
-                		  'ADC_super':adc_superres}
+                images = {'mean':orig*mag, 
+                          'erd':erd_img*mag,
+                          'superres_n':norm_out_img*mag,
+                          'superres':out_img*mag, 
+                          'ADC_orig': adc_orig, 
+                	  'ADC_super':adc_superres}
 
                 with open(cvs_filename, 'a') as f:
                     for image in images.keys():
@@ -184,34 +181,21 @@ def main():
                                                                         calculate_contrast(case, 1, images[image], 0)[inx]))
                 
                 if direction:
-                	out_img += out_image
+                	out_img += out_img
                 	large_out += large_out
                 	adc_superres += adc_superres
                 	adc_large += adc_large
                 	adc_orig += adc_orig
                 	orig += orig
-                #original_XYZ.append(orig)
-                #predicted_XYZ.append(out_img)
-                #large_xyz.append(large_out)
-                #pred_ADC_XYZ.append(adc_superres)
-                #large_ADC_xyz.append(adc_large)
-                #ADC_xyz.append(adc_orig)
 
                 
-            predicted = out_image/len(directions)
+            out_img = out_img/len(directions)
             orig = orig/len(directions)
             large = large_out/len(directions)
             adc_superres = adc_superres/len(directions)
             adc_large = adc_large/len(directions)
             adc_orig = adc_orig/len(directions)
             
-            #predicted = sum(predicted_XYZ)/len(predicted_XYZ)
-            #orig = sum(original_XYZ)/len(original_XYZ)
-            #large = sum(large_xyz)/len(large_xyz)
-            #adc_superres = sum(pred_ADC_XYZ)/len(pred_ADC_XYZ)
-            #adc_large = sum(large_ADC_xyz)/len(large_ADC_xyz)
-            #adc_orig = sum(ADC_xyz)/len(ADC_xyz)
-
             
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
             save_dicom(orig, filename)
@@ -225,7 +209,7 @@ def main():
             save_dicom(adc_large, filename)
                         
                                 
-            images = {'mean':orig, 'superres':predicted, 'ADC_orig': adc_orig, 'ADC_super':adc_superres}
+            images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_super':adc_superres}
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
