@@ -167,12 +167,13 @@ def main():
                 adc_large_norm = calc_adc(norm_large_out, b0_scaled, b)
 
                 
-                images = {'mean':orig*mag, 
-                          'erd':erd_img*mag,
-                          'superres_n':norm_out_img*mag,
-                          'superres':out_img*mag, 
+                images = {'mean':orig, 
+                          'erd':erd_img,
+                          'ADC_ERD':adc_erd,
+                          'superres_n':norm_out_img,
+                          'superres':out_img, 
                           'ADC_orig': adc_orig, 
-                	  'ADC_super':adc_superres}
+                	      'ADC_super':adc_superres}
 
                 with open(cvs_filename, 'a') as f:
                     for image in images.keys():
@@ -182,6 +183,8 @@ def main():
                 
                 if direction:
                 	out_img += out_img
+                	erd_img += erd_img
+                	adc_erd += adc_erd
                 	large_out += large_out
                 	adc_superres += adc_superres
                 	adc_large += adc_large
@@ -191,6 +194,8 @@ def main():
                 
             out_img = out_img/len(directions)
             orig = orig/len(directions)
+            erd_img = erd_img/len(directions)
+            adc_erd = adc_erd/len(directions)
             large = large_out/len(directions)
             adc_superres = adc_superres/len(directions)
             adc_large = adc_large/len(directions)
@@ -198,18 +203,29 @@ def main():
             
             
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
-            save_dicom(orig, filename)
+            save_dicom(orig*mag, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'erd.dcm')
+            save_dicom(erd_img*mag, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'super.dcm')
-            save_dicom(large, filename)
+            save_dicom(large*mag, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'mean.dcm')
             save_dicom(adc_orig, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'erd.dcm')
+            save_dicom(adc_erd, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'super.dcm')
             save_dicom(adc_superres, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'large.dcm')
             save_dicom(adc_large, filename)
                         
                                 
-            images = {'mean':orig, 'superres':out_img, 'ADC_orig': adc_orig, 'ADC_super':adc_superres}
+			images = {'mean':orig, 
+					  'erd':erd_img,
+					  'ADC_ERD':adc_erd,
+					  'superres_n':norm_out_img,
+					  'superres':out_img, 
+					  'ADC_orig': adc_orig, 
+					  'ADC_super':adc_superres}
+                	  
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
