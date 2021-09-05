@@ -1,1 +1,5 @@
 pip install matplotlib
+pip install SimpleITK
+pip install  scipy
+pip install tensorflow-addons
+pip install tensorflow
