@@ -218,19 +218,21 @@ def main():
             save_dicom(adc_large, filename)
                         
                                 
-			images = {'mean':orig, 
-					  'erd':erd_img,
-					  'ADC_ERD':adc_erd,
-					  'superres_n':norm_out_img,
-					  'superres':out_img, 
-					  'ADC_orig': adc_orig, 
-					  'ADC_super':adc_superres}
-                	  
-            with open(cvs_filename, 'a') as f:
-                for image in images.keys():
-                    for inx, metric in enumerate(metrics):
-                        f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
+images = {'mean':orig,
+          'erd':erd_img,
+          'ADC_ERD':adc_erd,
+          'superres_n':norm_out_img,
+          'superres':out_img, 
+          'ADC_orig': adc_orig, 
+          'ADC_super':adc_superres}
+
+with open(cvs_filename, 'a') as f:
+    for image in images.keys():
+        for inx, metric in enumerate(metrics):
+            f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
                                                                         calculate_contrast(case, 1, images[image], 0)[inx]))
     
 if __name__ == "__main__":
     main()
+
+
