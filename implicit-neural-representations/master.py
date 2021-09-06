@@ -216,23 +216,32 @@ def main():
             save_dicom(adc_superres, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'large.dcm')
             save_dicom(adc_large, filename)
+
+
+#out_img = out_img/len(directions)
+#orig = orig/len(directions)
+#erd_img = erd_img/len(directions)
+#adc_erd = adc_erd/len(directions)
+#large = large_out/len(directions)
+#adc_superres = adc_superres/len(directions)
+#adc_large = adc_large/len(directions)
+#adc_orig = adc_orig/len(directions)
                         
                                 
-images = {'mean':orig,
-          'erd':erd_img,
-          'ADC_ERD':adc_erd,
-          'superres_n':norm_out_img,
-          'superres':out_img, 
-          'ADC_orig': adc_orig, 
-          'ADC_super':adc_superres}
+#images = {'mean':orig,
+#          'erd':erd_img,
+#          'ADC_ERD':adc_erd,
+#          'superres_n':norm_out_img,
+#          'superres':out_img, 
+#          'ADC_orig': adc_orig, 
+#          'ADC_super':adc_superres}
 
-with open(cvs_filename, 'a') as f:
-    for image in images.keys():
-        for inx, metric in enumerate(metrics):
-            f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
-                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
+#with open(cvs_filename, 'a') as f:
+#    for image in images.keys():
+#        for inx, metric in enumerate(metrics):
+#            f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
+#                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
     
 if __name__ == "__main__":
     main()
-
 
