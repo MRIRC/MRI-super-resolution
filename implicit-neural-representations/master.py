@@ -29,6 +29,8 @@ parser.add_argument('--total_steps', type=int, default=3000, help='total steps f
 parser.add_argument('--seg', type=int, default=150, help='the epochs to wait until ensamble calculation')
 parser.add_argument('--hidden_layers', type=int, default=6, help='depth of the network')
 parser.add_argument('--hidden_features', type=int, default=64, help='number of neurons on each layer')
+parser.add_argument('--ROI_begin', type=int, default=40, help='Beginning pixel of the Region of Interest')
+parser.add_argument('--ROI_end', type=int, default=90, help='Last pixel that includes the Region of Interest')
 parser.add_argument('--learning_rate', type=float, default=0.0003, help='learning rate')
 parser.add_argument('--scale', type=int, default=3, help='scaling factor super-resolution')
 parser.add_argument('--exp_name', default='sr2', help='name of the experiment')
@@ -66,13 +68,15 @@ def main():
             directions = ['x', 'y', 'z']
             _slice = case.cancer_slice
             b = case.b
-            b0 = case.b0[:, :, _slice]
-            img = case.dwi[:, :, _slice, :] #TODO: This will be conducted on all slides later
+            b0 = case.b0[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice]
+            img = case.dwi[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, :]
+            print(img.shape)
+            #TODO: This will be conducted on all slides later
             inx = np.arange(case.dwi.shape[3]) #acquisition axis
             if args.erd:
                 print('Conducting Auto-ERD with Agglomerative Clustering...')
-                for i in tqdm(range(case.dwi.shape[0])):
-                    for j in range(case.dwi.shape[1]):
+                for i in range(args.ROI_begin, args.ROI_end):
+                    for j in range(args.ROI_begin, args.ROI_end):
                         acq = img[i, j, :].reshape(-1,1)
                         db = AgglomerativeClustering(n_clusters=2, affinity='euclidean', linkage='complete').fit(acq)
                         sample_means = [acq[db.labels_== x].mean() for x in set(db.labels_)]
@@ -87,13 +91,13 @@ def main():
                 starts = ends - case.acquisitions
                 img_dataset = []
                 accept_weights = []
-                sum_image = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
-                sum_accepted = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
-                sum_accepts = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
+                sum_image = np.zeros((img.shape[0], img.shape[1]))
+                sum_accepted = np.zeros((img.shape[0], img.shape[1]))
+                sum_accepts = np.zeros((img.shape[0], img.shape[1]))
                 ctr = 0
                 for acq in range(starts[direction], ends[direction]):
-                    img = case.dwi[:, :, _slice, acq]    
-                    accept = case.accept[:, :, _slice, acq]
+                    img = case.dwi[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]    
+                    accept = case.accept[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]
                     sum_image += img
                     sum_accepted += img*accept
                     sum_accepts += accept
@@ -102,8 +106,8 @@ def main():
                 direction_mean = sum_image/ctr
 
                 for acq in range(starts[direction], ends[direction]):
-                    img = case.dwi[:, :, _slice, acq]
-                    accept = case.accept[:, :, _slice, acq]
+                    img = case.dwi[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]
+                    accept = case.accept[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]
                     img_dataset.append(Image.fromarray(img))
                     accept_weights.append(accept)
                 dataset = ImageFitting_set(img_dataset)
@@ -179,7 +183,8 @@ def main():
                     for image in images.keys():
                         for inx, metric in enumerate(metrics):
                             f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, directions[direction],image, metric,  
-                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
+                                                                        calculate_contrast(case, 1, images[image], 
+                                                                        args.ROI_begin)[inx]))
                 
                 if direction:
                 	out_img += out_img
@@ -230,7 +235,8 @@ def main():
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
                         f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
-                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
+                                                                        calculate_contrast(case, 1, images[image],
+                                                                        args.ROI_begin)[inx]))
     
 if __name__ == "__main__":
     main()
