@@ -30,7 +30,7 @@ parser.add_argument('--seg', type=int, default=150, help='the epochs to wait unt
 parser.add_argument('--hidden_layers', type=int, default=6, help='depth of the network')
 parser.add_argument('--hidden_features', type=int, default=64, help='number of neurons on each layer')
 parser.add_argument('--ROI_begin', type=int, default=40, help='Beginning pixel of the Region of Interest')
-parser.add_argument('--ROI_end', type=int, default=90, help='Last pixel that includes the Region of Interest')
+parser.add_argument('--ROI_end', type=int, default=100, help='Last pixel that includes the Region of Interest')
 parser.add_argument('--learning_rate', type=float, default=0.0003, help='learning rate')
 parser.add_argument('--scale', type=int, default=3, help='scaling factor super-resolution')
 parser.add_argument('--exp_name', default='sr2', help='name of the experiment')
@@ -39,7 +39,7 @@ parser.add_argument('--erd', action='store_true', help='conduct AutoERD with agg
 
 
 args = parser.parse_args()
-metrics = ['C', 'CNR']
+metrics = ['C', 'CNR', 'CNR2']
 eps = 1e-7
 mag = 1000
 
