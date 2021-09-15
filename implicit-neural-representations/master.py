@@ -75,15 +75,15 @@ def main():
             inx = np.arange(case.dwi.shape[3]) #acquisition axis
             if args.erd:
                 print('Conducting Auto-ERD with Agglomerative Clustering...')
-                for i in range(args.ROI_begin, args.ROI_end):
-                    for j in range(args.ROI_begin, args.ROI_end):
+                for i in range(args.ROI_end - args.ROI_begin):
+                    for j in range(args.ROI_end - args.ROI_begin):
                         acq = img[i, j, :].reshape(-1,1)
                         db = AgglomerativeClustering(n_clusters=2, affinity='euclidean', linkage='complete').fit(acq)
                         sample_means = [acq[db.labels_== x].mean() for x in set(db.labels_)]
                         sample_lens = [len(acq[db.labels_== x]) for x in set(db.labels_)]
                         for k in range(2):
                             if (sample_lens[k] >= (2/3)*case.dwi.shape[3]):# and sample_means[k] > sample_means[1-k] ):
-                                case.accept[i, j, _slice, inx[db.labels_== (1-k)]] = 0 
+                                case.accept[args.ROI_begin + i, args.ROI_begin + j, _slice, inx[db.labels_== (1-k)]] = 0 
                                             
             for direction in range(3):  # gradient directions x, y, z
                 print(f'Training for {directions[direction]} direction...')
