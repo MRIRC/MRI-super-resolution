@@ -16,4 +16,4 @@ module load cuda/10.2
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py --erd --total_steps 200 --exp_name dumm
+python -u master.py --erd --scale 12 --exp_name ar.exp22a
