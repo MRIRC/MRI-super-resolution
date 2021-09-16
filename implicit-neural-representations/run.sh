@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=super_erd   # job name
-#SBATCH --output=super_erd.out # output log file
+#SBATCH --job-name=superres   # job name
+#SBATCH --output=superres.out # output log file
 
 #SBATCH --error=gpu.err  # error file
 #SBATCH --time=02:00:00  # wall time
@@ -12,8 +12,8 @@
 
 # Load all required modules below. As an example we load cuda/9.1
 #module unload cuda
-module load cuda/10.2
+module load cuda/11.0
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py --erd --scale 12 --exp_name ar.exp22a
+python -u master.py --total_steps $1 --seg $2 --hidden_layers $3 --hidden_features $4 --learning_rate $5 --exp_name $6 $7 > $6.out

@@ -27,7 +27,7 @@ def save_dicom(img, filename):
         writer.Execute(image_slice)
 
 class case:
-    def __init__(self, pt_id, b, cancer_loc, contralateral_loc, cancer_slice, acquisitions):
+    def __init__(self, pt_id, b, cancer_loc, contralateral_loc, noise, cancer_slice, acquisitions):
         '''
         class for a case
         pt_id : the patient id
@@ -39,6 +39,7 @@ class case:
         self.pt_id = pt_id
         self.cancer_loc = cancer_loc
         self.contralateral_loc = contralateral_loc
+        self.noise = noise
         self.cancer_slice = cancer_slice
         self.acquisitions = acquisitions
         self.b = b
@@ -59,16 +60,16 @@ class case:
                          
 cases = []
 
-#cases.append(case('18-1681-07', 900, (67, 71), (67, 59), 11, (8, 8, 8)))
-cases.append(case('18-1681-08', 900, (79, 71), (79, 57), 10, (8, 7, 8)))
-#cases.append(case('18-1681-09', 900, (63, 63), (63, 55), 15, (8, 8, 8)))
-cases.append(case('18-1681-30', 900, (66, 56), (66, 73), 17, (8, 8, 8)))
-#cases.append(case('18-1681-37', 900, (70, 70), (70, 61), 10, (8, 8, 8)))
-#cases.append(case('17-1694-55', 1500, (60, 57), (60, 69), 13, (4, 4, 4)))
-cases.append(case('18-1681-41', 1500, (69, 57), (69, 69), 8, (4, 4, 4)))
-#cases.append(case('18-1681-40', 1500, (72, 72), (72, 56), 4, (4, 4, 4)))
-#cases.append(case('18-1681-45', 1500, (71, 68), (70, 58), 12, (4, 4, 4)))
-cases.append(case('18-1681-47', 1500, (74, 48), (74, 82), 10, (4, 4, 4)))
+cases.append(case('18-1681-07', 900, (67, 71), (67, 59), (80,65), 11, (8, 8, 8)))
+cases.append(case('18-1681-08', 900, (79, 71), (79, 57), (98,65), 10, (8, 7, 8)))
+cases.append(case('18-1681-09', 900, (63, 63), (63, 55), (75,62), 15, (8, 8, 8)))
+cases.append(case('18-1681-30', 900, (66, 56), (66, 73), (81,64), 17, (8, 8, 8)))
+cases.append(case('18-1681-37', 900, (70, 70), (70, 61), (79,67), 10, (8, 8, 8)))
+#cases.append(case('17-1694-55', 1500, (60, 57), (60, 69), (88,62), 13, (4, 4, 4)))
+cases.append(case('18-1681-41', 1500, (69, 57), (69, 69), (86,65), 8, (4, 4, 4)))
+#cases.append(case('18-1681-40', 1500, (72, 72), (72, 56), (96,62), 4, (4, 4, 4)))
+cases.append(case('18-1681-45', 1500, (71, 68), (70, 58), (87,62), 12, (4, 4, 4)))
+#cases.append(case('18-1681-47', 1500, (74, 48), (74, 82), (91,64), 10, (4, 4, 4)))
 
 
 def calculate_contrast(case, scale, image, focus):
@@ -77,8 +78,11 @@ def calculate_contrast(case, scale, image, focus):
     cc_x, cc_y = tuple((i -focus)*scale for i in case.cancer_loc)
     # contralateral benign x,y locations
     cb_x, cb_y = tuple((i -focus)*scale for i in case.contralateral_loc)
+    # noise x,y locations
+    cn_x, cn_y = tuple((i -focus)*scale for i in case.noise)
     cancer_area = image[cc_x - scale : cc_x + scale, cc_y - scale : cc_y + scale]
     contralateral_area = image[cb_x - scale : cb_x + scale, cb_y - scale : cb_y + scale]
+    noise_area = image[cn_x - scale : cn_x + scale, cn_y - scale : cn_y + scale]
     
     #cancer_mean
     cm = cancer_area.mean()
@@ -88,10 +92,13 @@ def calculate_contrast(case, scale, image, focus):
     varc = np.std(cancer_area)**2
     #benign variance
     varb = np.std(contralateral_area)**2
+    #noise variance
+    varn = np.std(noise_area)
     
     C = (cancer_area.mean() / (contralateral_area.mean() + 1e-7))
     CNR = abs(cancer_area.mean() - contralateral_area.mean())/np.sqrt(varc + varb)
-    return C, CNR
+    CNR2 = abs(cancer_area.mean() - contralateral_area.mean())/varn
+    return C, CNR, CNR2
 
 def get_mgrid(sidelen, dim=2):
     '''Generates a flattened grid of (x,y,...) coordinates in a range of -1 to 1.

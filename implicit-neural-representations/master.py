@@ -29,6 +29,8 @@ parser.add_argument('--total_steps', type=int, default=3000, help='total steps f
 parser.add_argument('--seg', type=int, default=150, help='the epochs to wait until ensamble calculation')
 parser.add_argument('--hidden_layers', type=int, default=6, help='depth of the network')
 parser.add_argument('--hidden_features', type=int, default=64, help='number of neurons on each layer')
+parser.add_argument('--ROI_begin', type=int, default=40, help='Beginning pixel of the Region of Interest')
+parser.add_argument('--ROI_end', type=int, default=100, help='Last pixel that includes the Region of Interest')
 parser.add_argument('--learning_rate', type=float, default=0.0003, help='learning rate')
 parser.add_argument('--scale', type=int, default=3, help='scaling factor super-resolution')
 parser.add_argument('--exp_name', default='sr2', help='name of the experiment')
@@ -37,7 +39,7 @@ parser.add_argument('--erd', action='store_true', help='conduct AutoERD with agg
 
 
 args = parser.parse_args()
-metrics = ['C', 'CNR']
+metrics = ['C', 'CNR', 'CNR2']
 eps = 1e-7
 mag = 1000
 
@@ -66,20 +68,22 @@ def main():
             directions = ['x', 'y', 'z']
             _slice = case.cancer_slice
             b = case.b
-            b0 = case.b0[:, :, _slice]
-            img = case.dwi[:, :, _slice, :] #TODO: This will be conducted on all slides later
+            b0 = case.b0[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice]
+            img = case.dwi[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, :]
+            print(img.shape)
+            #TODO: This will be conducted on all slides later
             inx = np.arange(case.dwi.shape[3]) #acquisition axis
             if args.erd:
                 print('Conducting Auto-ERD with Agglomerative Clustering...')
-                for i in tqdm(range(case.dwi.shape[0])):
-                    for j in range(case.dwi.shape[1]):
+                for i in range(args.ROI_end - args.ROI_begin):
+                    for j in range(args.ROI_end - args.ROI_begin):
                         acq = img[i, j, :].reshape(-1,1)
                         db = AgglomerativeClustering(n_clusters=2, affinity='euclidean', linkage='complete').fit(acq)
                         sample_means = [acq[db.labels_== x].mean() for x in set(db.labels_)]
                         sample_lens = [len(acq[db.labels_== x]) for x in set(db.labels_)]
                         for k in range(2):
                             if (sample_lens[k] >= (2/3)*case.dwi.shape[3]):# and sample_means[k] > sample_means[1-k] ):
-                                case.accept[i, j, _slice, inx[db.labels_== (1-k)]] = 0 
+                                case.accept[args.ROI_begin + i, args.ROI_begin + j, _slice, inx[db.labels_== (1-k)]] = 0 
                                             
             for direction in range(3):  # gradient directions x, y, z
                 print(f'Training for {directions[direction]} direction...')
@@ -87,13 +91,13 @@ def main():
                 starts = ends - case.acquisitions
                 img_dataset = []
                 accept_weights = []
-                sum_image = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
-                sum_accepted = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
-                sum_accepts = np.zeros((case.dwi.shape[0], case.dwi.shape[1]))
+                sum_image = np.zeros((img.shape[0], img.shape[1]))
+                sum_accepted = np.zeros((img.shape[0], img.shape[1]))
+                sum_accepts = np.zeros((img.shape[0], img.shape[1]))
                 ctr = 0
                 for acq in range(starts[direction], ends[direction]):
-                    img = case.dwi[:, :, _slice, acq]    
-                    accept = case.accept[:, :, _slice, acq]
+                    img = case.dwi[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]    
+                    accept = case.accept[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]
                     sum_image += img
                     sum_accepted += img*accept
                     sum_accepts += accept
@@ -102,8 +106,8 @@ def main():
                 direction_mean = sum_image/ctr
 
                 for acq in range(starts[direction], ends[direction]):
-                    img = case.dwi[:, :, _slice, acq]
-                    accept = case.accept[:, :, _slice, acq]
+                    img = case.dwi[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]
+                    accept = case.accept[args.ROI_begin:args.ROI_end, args.ROI_begin:args.ROI_end, _slice, acq]
                     img_dataset.append(Image.fromarray(img))
                     accept_weights.append(accept)
                 dataset = ImageFitting_set(img_dataset)
@@ -159,47 +163,57 @@ def main():
 
                 b0_scaled = rescale(b0, args.scale, anti_aliasing=False)
                 
-                adc_erd = calc_adc(erd_img, b0, b)
                 adc_orig = calc_adc(orig, b0, b) 
-                adc_large =  calc_adc(large_out, b0_scaled, b)                 
+                adc_erd = calc_adc(erd_img, b0, b)
                 adc_superres = calc_adc(out_img, b0, b)
+                adc_large =  calc_adc(large_out, b0_scaled, b)                 
                 adc_norm = calc_adc(norm_out_img, b0, b)
                 adc_large_norm = calc_adc(norm_large_out, b0_scaled, b)
 
                 
                 images = {'mean':orig, 
-                          'erd':erd_img,
-                          'ADC_ERD':adc_erd,
+                          'ERD':erd_img,
+                          'superres':out_img,
                           'superres_n':norm_out_img,
-                          'superres':out_img, 
                           'ADC_orig': adc_orig, 
-                	      'ADC_super':adc_superres}
+                          'ADC_ERD':adc_erd,
+                	      'ADC_super':adc_superres,
+                          'ADC_super_norm':adc_norm}
 
                 with open(cvs_filename, 'a') as f:
                     for image in images.keys():
                         for inx, metric in enumerate(metrics):
                             f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, directions[direction],image, metric,  
-                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
+                                                                        calculate_contrast(case, 1, images[image], 
+                                                                        args.ROI_begin)[inx]))
                 
                 if direction:
-                	out_img += out_img
-                	erd_img += erd_img
-                	adc_erd += adc_erd
-                	large_out += large_out
-                	adc_superres += adc_superres
-                	adc_large += adc_large
-                	adc_orig += adc_orig
-                	orig += orig
+                    orig += orig
+                    erd_img += erd_img
+                    out_img += out_img
+                    large_out += large_out
+                    norm_out_img += norm_out_img
+                    norm_large_out += norm_large_out
+                    adc_orig += adc_orig
+                    adc_erd += adc_erd
+                    adc_superres += adc_superres
+                    adc_large += adc_large
+                    adc_norm += adc_norm
+                    adc_large_norm += adc_large_norm
 
                 
-            out_img = out_img/len(directions)
             orig = orig/len(directions)
             erd_img = erd_img/len(directions)
+            out_img = out_img/len(directions)
+            large_out = large_out/len(directions)
+            norm_out_img = norm_out_img/len(directions)
+            norm_large_out = norm_large_out/len(directions)
+            adc_orig = adc_orig/len(directions)
             adc_erd = adc_erd/len(directions)
-            large = large_out/len(directions)
             adc_superres = adc_superres/len(directions)
             adc_large = adc_large/len(directions)
-            adc_orig = adc_orig/len(directions)
+            adc_norm = adc_norm/len(directions)
+            adc_large_norm = adc_large_norm/len(directions)
             
             
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'mean.dcm')
@@ -207,7 +221,9 @@ def main():
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'erd.dcm')
             save_dicom(erd_img*mag, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'super.dcm')
-            save_dicom(large*mag, filename)
+            save_dicom(large_out*mag, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'DWI', 'super_norm.dcm')
+            save_dicom(norm_large_out*mag, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'mean.dcm')
             save_dicom(adc_orig, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'erd.dcm')
@@ -216,21 +232,27 @@ def main():
             save_dicom(adc_superres, filename)
             filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'large.dcm')
             save_dicom(adc_large, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'norm_super.dcm')
+            save_dicom(adc_norm, filename)
+            filename = os.path.join(args.out_img_folder, args.exp_name, pt_no, 'ADC', 'norm_super_large.dcm')
+            save_dicom(adc_large_norm, filename)
                         
                                 
-			images = {'mean':orig, 
-					  'erd':erd_img,
-					  'ADC_ERD':adc_erd,
-					  'superres_n':norm_out_img,
-					  'superres':out_img, 
-					  'ADC_orig': adc_orig, 
-					  'ADC_super':adc_superres}
+            images = {'mean':orig,
+                      'ERD':erd_img,
+                      'superres':out_img,
+                      'superres_n':norm_out_img,
+                      'ADC_orig': adc_orig,
+                      'ADC_ERD':adc_erd,
+                      'ADC_super':adc_superres,
+                      'ADC_super_norm':adc_norm} 
                 	  
             with open(cvs_filename, 'a') as f:
                 for image in images.keys():
                     for inx, metric in enumerate(metrics):
                         f.write('{},{},{},{},{},{}\n'.format(seed, pt_no, 'mean', image, metric,  
-                                                                        calculate_contrast(case, 1, images[image], 0)[inx]))
+                                                                        calculate_contrast(case, 1, images[image],
+                                                                        args.ROI_begin)[inx]))
     
 if __name__ == "__main__":
     main()
