@@ -49,13 +49,9 @@ class case:
         self.dwi = sio.loadmat(filename)['data']
         filename = '../anon_data/pat' + pt_no + '_mean_b0.mat'
         self.b0 = sio.loadmat(filename)['data_mean_b0']
-        filename = '../anon_data/pat' + pt_no + '_ADC_alldata_mm.mat'
         self.accept = np.ones(self.dwi.shape, dtype=int)
-        #try :
-        #    self.adc = sio.loadmat(filename)['ADC_alldata_mm']
-        #except OSError:
-        #    rep_b0 = np.transpose(np.tile(self.b0,(self.dwi.shape[-1],1,1,1)),(1,2,3,0))
-        #    self.adc = -(np.log(self.dwi/(rep_b0 + 1e-7) + 1e-7)/self.b)*1000
+        filename = '../anon_data/pat' + pt_no + '_ERD.mat'
+        self.erd = sio.loadmat(filename)['ADC_alldata_mm_ERD']
 
                          
 cases = []

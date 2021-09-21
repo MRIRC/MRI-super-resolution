@@ -35,7 +35,7 @@ parser.add_argument('--learning_rate', type=float, default=0.0003, help='learnin
 parser.add_argument('--scale', type=int, default=3, help='scaling factor super-resolution')
 parser.add_argument('--exp_name', default='sr2', help='name of the experiment')
 parser.add_argument('--repeat_time', type=int, default=1, help='run the experiment multiple times to account for randomness')
-parser.add_argument('--erd', action='store_true', help='conduct AutoERD with agglomerative clustering before training')
+parser.add_argument('--erd', type=int, default=0, help='conduct AutoERD with agglomerative clustering before training [0=no_erd, 1=majority voting, 2=intensity-cognisant on LR')
 
 
 args = parser.parse_args()
@@ -81,9 +81,16 @@ def main():
                         db = AgglomerativeClustering(n_clusters=2, affinity='euclidean', linkage='complete').fit(acq)
                         sample_means = [acq[db.labels_== x].mean() for x in set(db.labels_)]
                         sample_lens = [len(acq[db.labels_== x]) for x in set(db.labels_)]
-                        for k in range(2):
-                            if (sample_lens[k] >= (2/3)*case.dwi.shape[3]):# and sample_means[k] > sample_means[1-k] ):
-                                case.accept[args.ROI_begin + i, args.ROI_begin + j, _slice, inx[db.labels_== (1-k)]] = 0 
+                        if args.erd == 1:
+                            for k in range(2):
+                                if (sample_lens[k] >= (2/3)*case.dwi.shape[3]):
+                                    case.accept[args.ROI_begin + i, args.ROI_begin + j, _slice, inx[db.labels_== (1-k)]] = 0
+                        elif args.erd == 2:
+                        	if case.erd[args.ROI_begin + i, args.ROI_begin + j, _slice] > 0 : 
+                        	    for k in range(2):
+                        		    if sample_means[k] > sample_means[1-k]:
+                        		        case.accept[args.ROI_begin + i, args.ROI_begin + j, _slice, inx[db.labels_== (1-k)]] = 0
+                        		         
                                             
             for direction in range(3):  # gradient directions x, y, z
                 print(f'Training for {directions[direction]} direction...')
