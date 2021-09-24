@@ -49,13 +49,9 @@ class case:
         self.dwi = sio.loadmat(filename)['data']
         filename = '../anon_data/pat' + pt_no + '_mean_b0.mat'
         self.b0 = sio.loadmat(filename)['data_mean_b0']
-        filename = '../anon_data/pat' + pt_no + '_ADC_alldata_mm.mat'
         self.accept = np.ones(self.dwi.shape, dtype=int)
-        try :
-            self.adc = sio.loadmat(filename)['ADC_alldata_mm']
-        except OSError:
-            rep_b0 = np.transpose(np.tile(self.b0,(self.dwi.shape[-1],1,1,1)),(1,2,3,0))
-            self.adc = -(np.log(self.dwi/(rep_b0 + 1e-7) + 1e-7)/self.b)*1000
+        filename = '../anon_data/pat' + pt_no + '_ERD.mat'
+        self.erd = sio.loadmat(filename)['ADC_alldata_mm_ERD']
 
                          
 cases = []
@@ -65,11 +61,11 @@ cases.append(case('18-1681-08', 900, (79, 71), (79, 57), (98,65), 10, (8, 7, 8))
 cases.append(case('18-1681-09', 900, (63, 63), (63, 55), (75,62), 15, (8, 8, 8)))
 cases.append(case('18-1681-30', 900, (66, 56), (66, 73), (81,64), 17, (8, 8, 8)))
 cases.append(case('18-1681-37', 900, (70, 70), (70, 61), (79,67), 10, (8, 8, 8)))
-#cases.append(case('17-1694-55', 1500, (60, 57), (60, 69), (88,62), 13, (4, 4, 4)))
+cases.append(case('17-1694-82', 1500, (56, 53), (56, 73), (80,60), 16, (4, 4, 4)))
 cases.append(case('18-1681-41', 1500, (69, 57), (69, 69), (86,65), 8, (4, 4, 4)))
-#cases.append(case('18-1681-40', 1500, (72, 72), (72, 56), (96,62), 4, (4, 4, 4)))
+cases.append(case('18-1694-76', 1500, (73, 69), (72, 53), (90,64), 16, (4, 4, 4)))
 cases.append(case('18-1681-45', 1500, (71, 68), (70, 58), (87,62), 12, (4, 4, 4)))
-#cases.append(case('18-1681-47', 1500, (74, 48), (74, 82), (91,64), 10, (4, 4, 4)))
+cases.append(case('18-1694-78', 1500, (60, 73), (60, 50), (78,60), 19, (4, 4, 4)))
 
 
 def calculate_contrast(case, scale, image, focus):
