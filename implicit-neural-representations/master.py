@@ -109,7 +109,7 @@ def main():
                     sum_accepted += img*accept
                     sum_accepts += accept
                     ctr += 1	
-                accepted_mean = sum_accepted/sum_accepts
+                accepted_mean = sum_accepted/(sum_accepts + eps)
                 direction_mean = sum_image/ctr
 
                 for acq in range(starts[direction], ends[direction]):
