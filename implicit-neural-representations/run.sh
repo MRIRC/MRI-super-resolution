@@ -4,7 +4,7 @@
 #SBATCH --output=superres.out # output log file
 
 #SBATCH --error=gpu.err  # error file
-#SBATCH --time=02:00:00  # wall time
+#SBATCH --time=01:00:00  # wall time
 #SBATCH --nodes=1        # 1 GPU node
 #SBATCH --partition=gpu2 # GPU2 partition
 #SBATCH --ntasks=1       # 1 CPU core to drive GPU
@@ -16,4 +16,4 @@ module load cuda/11.0
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py --total_steps $1 --seg $2 --hidden_layers $3 --hidden_features $4 --learning_rate $5 --exp_name $6 $7 > $6.out
+python -u master.py --total_steps $1 --seg $2 --hidden_layers $3 --hidden_features $4 --learning_rate $5 --exp_name $6 --erd $7 > $6.out
