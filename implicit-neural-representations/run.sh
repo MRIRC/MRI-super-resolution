@@ -16,4 +16,4 @@ module load cuda/11.0
 
 # Add lines here to run your GPU-based computations.
 
-python -u master.py --total_steps $1 --seg $2 --hidden_layers $3 --hidden_features $4 --learning_rate $5 --exp_name $6 --erd $7 > $6.out
+python -u master.py --total_steps $1 --seg $2 --hidden_layers $3 --hidden_features $4 --learning_rate $5 --exp_name $6 --repeat_time $7 --erd $8 > $6.out
