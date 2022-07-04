@@ -12,7 +12,7 @@ from glob import glob
 from tqdm.notebook import tqdm
 from scipy.ndimage import shift
 from skimage.transform import rescale
-from skimage.feature import masked_register_translation
+#from skimage.feature import masked_register_translation
 
 
 
