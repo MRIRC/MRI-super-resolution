@@ -53,19 +53,7 @@ class case:
         filename = '../anon_data/pat' + pt_no + '_ERD.mat'
         self.erd = sio.loadmat(filename)['ADC_alldata_mm_ERD']
 
-                         
-cases = []
 
-cases.append(case('18-1681-07', 900, (67, 71), (67, 59), (80,65), 11, (8, 8, 8)))
-cases.append(case('18-1681-08', 900, (79, 71), (79, 57), (98,65), 10, (8, 7, 8)))
-cases.append(case('18-1681-09', 900, (63, 63), (63, 55), (75,62), 15, (8, 8, 8)))
-cases.append(case('18-1681-30', 900, (66, 56), (66, 73), (81,64), 17, (8, 8, 8)))
-cases.append(case('18-1681-37', 900, (70, 70), (70, 61), (79,67), 10, (8, 8, 8)))
-cases.append(case('17-1694-82', 1500, (56, 53), (56, 73), (80,60), 16, (4, 4, 4)))
-cases.append(case('18-1681-41', 1500, (69, 57), (69, 69), (86,65), 8, (4, 4, 4)))
-cases.append(case('18-1694-76', 1500, (73, 69), (72, 53), (90,64), 16, (4, 4, 4)))
-cases.append(case('18-1681-45', 1500, (71, 68), (70, 58), (87,62), 12, (4, 4, 4)))
-cases.append(case('18-1694-78', 1500, (60, 73), (60, 50), (78,60), 19, (4, 4, 4)))
 
 
 def calculate_contrast(case, scale, image, focus):
@@ -113,6 +101,7 @@ class SineLayer(nn.Module):
         self.in_features = in_features
         self.linear = nn.Linear(in_features, out_features, bias=bias)
         self.init_weights()
+      
 
     def init_weights(self):
         with torch.no_grad():
@@ -136,10 +125,11 @@ class Siren(nn.Module):
         super().__init__()
         self.net = []
         self.net.append(SineLayer(in_features, hidden_features, is_first=True, omega_0=first_omega_0))
-        
+        self.relu = nn.ReLU()
         for i in range(hidden_layers):
             self.net.append(SineLayer(hidden_features, hidden_features, is_first=False, omega_0=hidden_omega_0))
-
+        self.net.append(nn.Linear(hidden_features, hidden_features))
+        self.net.append(nn.ReLU())
         final_linear = nn.Linear(hidden_features, out_features)
         with torch.no_grad():
             final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0, np.sqrt(6 / hidden_features) / hidden_omega_0)
@@ -147,14 +137,16 @@ class Siren(nn.Module):
         self.net = nn.Sequential(*self.net)
             
     def forward(self, coords):
-        coords = coords.clone().detach().requires_grad_(True) # allows to take derivative w.r.t. input
+        coords = coords.clone().detach().requires_grad_(False) # allows to take derivative w.r.t. input
         output = self.net(coords)
+        output = self.relu(output)
         return output, coords
 
 def get_image_tensor(img):
     
     sidelength, _ = img.size
-    transform = Compose([Resize(sidelength), ToTensor(), Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
+    #transform = Compose([Resize(sidelength), ToTensor(), Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
+    transform = Compose([Resize(sidelength), ToTensor()])#, Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
     img = transform(img)
     return img
 

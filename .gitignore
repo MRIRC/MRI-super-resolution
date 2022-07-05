@@ -2,7 +2,6 @@
 *.pyc
 *.err
 *.out
-*.ipynb
 /output_images
 /experiments
 *.dcm
