@@ -119,34 +119,63 @@ class SineLayer(nn.Module):
         return torch.sin(intermediate), intermediate
 
 
-
 class Siren(nn.Module):
-    def __init__(self, in_features, hidden_features, hidden_layers, out_features, first_omega_0=30., hidden_omega_0=30.):
+    def __init__(self, in_features, hidden_features, 
+                 hidden_layers, out_features, 
+                 first_omega_0=30., 
+                 hidden_omega_0=30.):
         super().__init__()
+        # self.net is the INR that calculates signal intensities for its inputs
         self.net = []
+        self.final_linear = nn.Linear(hidden_features, out_features)
+        with torch.no_grad():
+            self.final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0, np.sqrt(6 / hidden_features) / hidden_omega_0)
         self.net.append(SineLayer(in_features, hidden_features, is_first=True, omega_0=first_omega_0))
-        self.relu = nn.ReLU()
+
         for i in range(hidden_layers):
             self.net.append(SineLayer(hidden_features, hidden_features, is_first=False, omega_0=hidden_omega_0))
-        self.net.append(nn.Linear(hidden_features, hidden_features))
-        self.net.append(nn.ReLU())
-        final_linear = nn.Linear(hidden_features, out_features)
-        with torch.no_grad():
-            final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0, np.sqrt(6 / hidden_features) / hidden_omega_0)
-        self.net.append(final_linear)
+
+        self.net.append(self.final_linear)
+
         self.net = nn.Sequential(*self.net)
-            
+        
     def forward(self, coords):
-        coords = coords.clone().detach().requires_grad_(False) # allows to take derivative w.r.t. input
+        coords = coords.clone().detach().requires_grad_(False)
         output = self.net(coords)
-        output = self.relu(output)
-        return output, coords
+
+        return output
+
+class PN(nn.Module):
+    def __init__(self, in_features, hidden_features):
+        super().__init__()
+        self.tanh = nn.Tanh()  
+        self.perturb_linear = nn.Linear(in_features + 1, hidden_features)
+        self.perturb_linear2 = nn.Linear(hidden_features, 2)
+        
+    def forward(self, coords, sample=0, eps=0):
+        coords = coords.clone().detach().requires_grad_(False)
+        acq = torch.tensor([sample/10.], dtype=torch.float).cuda()
+        acq = acq.repeat(coords.size(0),1)
+        perturbation = self.perturb_linear(torch.cat((coords, acq),-1))
+        perturbation = self.tanh(perturbation)
+        perturbation = self.perturb_linear2(perturbation)
+        pertubation = eps*self.tanh(perturbation)
+        
+        return pertubation
+    
+# Fourier feature mapping
+def input_mapping(x, B):
+  if B is None:
+    return x
+  else:
+    x_proj = torch.matmul(2.*np.pi*x, B.T)
+    return torch.concatenate([torch.sin(x_proj), torch.cos(x_proj)], axis=-1)
 
 def get_image_tensor(img):
     
     sidelength, _ = img.size
     #transform = Compose([Resize(sidelength), ToTensor(), Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
-    transform = Compose([Resize(sidelength), ToTensor()])#, Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
+    transform = Compose([Resize(sidelength), ToTensor(), Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))])
     img = transform(img)
     return img
 
